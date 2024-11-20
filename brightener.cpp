@@ -1,33 +1,37 @@
 #include "./brightener.h"
-#include <utility>
+#include <memory>  // adding this for std::shared_ptr
 
-ImageBrightener::ImageBrightener(std::unique_ptr<Image> inputImage)
-    : m_inputImage(std::move(inputImage)) {
+// Function to determine if a pixel is attenuated
+bool IsPixelAttenuated(int pixelValue, int addValue) {
+    return pixelValue > (255 - addValue);
 }
 
-bool ImageBrightener::ValidateImage() {
-    if (m_inputImage->m_columns <= 1024 && m_inputImage->m_rows <= 1024) {
-        return true;
-    } else {
-        return false;
+// Function to brighten a pixel and return its new value
+int GetBrightenedPixelValue(int pixelValue, int addValue) {
+    return IsPixelAttenuated(pixelValue, addValue) ? 255 : pixelValue + addValue;
+}
+
+// Function to process each pixel
+void ProcessPixel(const std::shared_ptr<Image>& image,
+    int x, int y, int addValue, int attenuatedPixelCount) {
+    int pixelValue = image->GetPixel(x, y);
+    if (IsPixelAttenuated(pixelValue, addValue)) {
+        ++attenuatedPixelCount;
     }
+    int newPixelValue = GetBrightenedPixelValue(pixelValue, addValue);
+    image->SetPixel(x, y, newPixelValue);
 }
 
+// Main function to brighten the whole image
 int ImageBrightener::BrightenWholeImage() {
-    // For brightening, we add a certain grayscale (25) to every pixel.
-    // While brightening, some pixels may cross the max brightness. They are
-    // called 'attenuated' pixels
     int attenuatedPixelCount = 0;
-    for (int x = 0; x < m_inputImage->m_rows; x++) {
-        for (int y = 0; y < m_inputImage->m_columns; y++) {
-            if (m_inputImage->GetPixel(x, y) > (255 - 25)) {
-                ++attenuatedPixelCount;
-                m_inputImage->SetPixel(x, y, 255);
-            } else {
-                int pixelIndex = x * m_inputImage->m_columns + y;
-                m_inputImage->SetPixel(x, y, m_inputImage->GetPixel(x, y) + 25);
-            }
+    int addValue = 25;
+
+    for (int x = 0; x < m_inputImage->m_rows; ++x) {
+        for (int y = 0; y < m_inputImage->m_columns; ++y) {
+            ProcessPixel(m_inputImage, x, y, addValue, attenuatedPixelCount);
         }
     }
+
     return attenuatedPixelCount;
 }
